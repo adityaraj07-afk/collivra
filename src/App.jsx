@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabaseClient'
 import { useAuth } from './hooks/useAuth'
 import Login from './pages/Login'
@@ -33,6 +33,8 @@ function Protected({ children }) {
 }
 
 export default function App() {
+  const navigate = useNavigate()
+
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
@@ -43,14 +45,14 @@ export default function App() {
           .single()
 
         if (!data) {
-          window.location.href = '/profile'
+          navigate('/profile')
         } else {
-          window.location.href = '/dashboard'
+          navigate('/dashboard')
         }
       }
     })
     return () => listener.subscription.unsubscribe()
-  }, [])
+  }, [navigate])
 
   return (
     <Routes>

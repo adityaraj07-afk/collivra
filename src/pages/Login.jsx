@@ -34,13 +34,28 @@ export default function Login() {
       return
     }
 
-    if (data?.user) {
-      if (data.session) {
-        navigate('/profile')
-      } else {
-        setError('Check your email to confirm your account, then sign in.')
-      }
+    // Session exists = email confirmation is OFF, user is logged in right away
+    if (data?.session) {
+      navigate('/profile')
+      return
     }
+
+    // No session but user created = confirmation is still ON.
+    // Try signing in immediately as a fallback.
+    if (data?.user) {
+      const { data: signInData } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+
+      if (signInData?.session) {
+        navigate('/profile')
+        return
+      }
+
+      setError('Account created. Please confirm your email, then sign in.')
+    }
+
     setLoading(false)
   }
 
