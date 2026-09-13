@@ -12,6 +12,7 @@ import ProjectWorkspace from './pages/ProjectWorkspace'
 import Teammates from './pages/Teammates'
 import Dashboard from './pages/Dashboard'
 import FindPeople from './pages/FindPeople'
+import MyNetwork from './pages/MyNetwork'
 import TeamRecommendation from './pages/TeamRecommendation'
 import MyTeams from './pages/MyTeams'
 import Messages from './pages/Messages'
@@ -60,10 +61,12 @@ export default function App() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
       <Route path="/find-people" element={<Protected><FindPeople /></Protected>} />
+      <Route path="/network" element={<Protected><MyNetwork /></Protected>} />
       <Route path="/discover" element={<Protected><DiscoverProjects /></Protected>} />
       <Route path="/create-project" element={<Protected><CreateProject /></Protected>} />
       <Route path="/my-teams" element={<Protected><MyTeams /></Protected>} />
       <Route path="/messages" element={<Protected><Messages /></Protected>} />
+      <Route path="/messages/:userId" element={<Protected><Messages /></Protected>} />
       <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
       <Route path="/settings" element={<Protected><Settings /></Protected>} />
       <Route path="/profile" element={<Protected><Profile /></Protected>} />

@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import MatchScoreBadge from './MatchScoreBadge'
 import InviteButton from './InviteButton'
+import ConnectButton from './ConnectButton'
 
 export default function StudentCard({ student, score, projectId, showInvite }) {
   const initial = student?.name?.charAt(0)?.toUpperCase() || '?'
+  const branch = student.branch || student.department
 
   return (
     <div className="rounded-xl border border-border bg-surface p-5 transition-colors hover:border-primary">
@@ -17,7 +19,7 @@ export default function StudentCard({ student, score, projectId, showInvite }) {
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-text">{student.name}</p>
-          <p className="truncate text-sm text-muted">{student.college}{student.department ? ` · ${student.department}` : ''}</p>
+          <p className="truncate text-sm text-muted">{student.college}{branch ? ` · ${branch}` : ''}</p>
         </div>
         {typeof score === 'number' && <MatchScoreBadge score={score} />}
       </div>
@@ -48,6 +50,7 @@ export default function StudentCard({ student, score, projectId, showInvite }) {
         >
           View Profile
         </Link>
+        <ConnectButton studentId={student.id} fullWidth={false} />
         {showInvite && <InviteButton studentId={student.id} projectId={projectId} />}
       </div>
     </div>

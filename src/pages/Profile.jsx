@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
+import { useConnections } from '../hooks/useConnections'
 import AppShell from '../components/AppShell'
+import EditableField from '../components/EditableField'
+import ConnectButton from '../components/ConnectButton'
 
 const EXPERIENCE_LEVELS = ['Beginner', 'Intermediate', 'Advanced']
 const SKILL_LEVEL_STYLE = {
@@ -11,6 +14,19 @@ const SKILL_LEVEL_STYLE = {
   Intermediate: 'bg-warning/10 text-warning',
   Beginner: 'bg-danger/10 text-danger',
 }
+const BRANCHES = [
+  'Computer Science Engineering',
+  'Information Technology',
+  'Electronics & Communication',
+  'Electrical Engineering',
+  'Mechanical Engineering',
+  'Civil Engineering',
+  'Chemical Engineering',
+  'Biotechnology',
+  'Data Science',
+  'Artificial Intelligence & ML',
+  'Other',
+]
 
 function TagInput({ tags, onChange, placeholder }) {
   const [input, setInput] = useState('')
@@ -44,10 +60,85 @@ function TagInput({ tags, onChange, placeholder }) {
   )
 }
 
+function BranchSelect({ value, onChange }) {
+  const isCustom = value && !BRANCHES.slice(0, -1).includes(value)
+  const [customMode, setCustomMode] = useState(isCustom)
+
+  function handleSelect(v) {
+    if (v === 'Other') {
+      setCustomMode(true)
+      onChange('')
+    } else {
+      setCustomMode(false)
+      onChange(v)
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <select
+        value={customMode ? 'Other' : value}
+        onChange={(e) => handleSelect(e.target.value)}
+        className="rounded-[9px] border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none"
+      >
+        <option value="" disabled>Select branch</option>
+        {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+      </select>
+      {customMode && (
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Enter your branch"
+          className="rounded-[9px] border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none"
+        />
+      )}
+    </div>
+  )
+}
+
+function BranchEditableField({ value, onSave, editMode = false }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+  const [saving, setSaving] = useState(false)
+
+  if (!editing) {
+    return (
+      <span
+        onClick={() => { setDraft(value ?? ''); setEditing(true) }}
+        title="Click to edit"
+        className={`-ml-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-1.5 py-0.5 transition-colors hover:border-[#95D5B2] hover:bg-surface2 ${
+          editMode ? 'border-borderStrong bg-[#F8FCFA]' : 'border-transparent'
+        }`}
+      >
+        {value || <span className="italic text-muted">Add your branch</span>}
+        <span className={`text-[11px] text-muted transition-opacity ${editMode ? 'opacity-100' : 'opacity-0'}`}>✏️</span>
+      </span>
+    )
+  }
+
+  async function commit() {
+    if (!draft.trim()) return
+    setSaving(true)
+    await onSave(draft)
+    setSaving(false)
+    setEditing(false)
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <BranchSelect value={draft} onChange={setDraft} />
+      <button onClick={commit} disabled={saving} className="rounded-[6px] bg-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-primaryHover disabled:opacity-50">
+        {saving ? '…' : '✓'}
+      </button>
+      <button onClick={() => setEditing(false)} className="rounded-[6px] border border-border bg-surface px-2.5 py-1 text-xs text-muted hover:bg-surface2">✕</button>
+    </span>
+  )
+}
+
 function SetupForm({ userId, onComplete }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
-    name: '', college: '', year: '', department: '', cgpa: '',
+    name: '', college: '', year: '', branch: '', cgpa: '',
     skills: [], experience: 'Intermediate', previous_projects: [],
     github_url: '', linkedin_url: '', photo_url: '',
   })
@@ -75,7 +166,8 @@ function SetupForm({ userId, onComplete }) {
       name: form.name,
       college: form.college,
       year: form.year ? Number(form.year) : null,
-      department: form.department,
+      branch: form.branch,
+      department: form.branch,
       cgpa: form.cgpa ? Number(form.cgpa) : null,
       skills: form.skills,
       skills_detailed: form.skills.map((name) => ({ name, level: 'Intermediate' })),
@@ -105,9 +197,12 @@ function SetupForm({ userId, onComplete }) {
           <input value={form.college} onChange={(e) => update('college', e.target.value)} placeholder="College" className="rounded-[9px] border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none" />
           <div className="grid grid-cols-2 gap-4">
             <input type="number" value={form.year} onChange={(e) => update('year', e.target.value)} placeholder="Year (1-5)" className="rounded-[9px] border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none" />
-            <input value={form.department} onChange={(e) => update('department', e.target.value)} placeholder="Department" className="rounded-[9px] border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none" />
+            <input type="number" step="0.01" value={form.cgpa} onChange={(e) => update('cgpa', e.target.value)} placeholder="CGPA" className="rounded-[9px] border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none" />
           </div>
-          <input type="number" step="0.01" value={form.cgpa} onChange={(e) => update('cgpa', e.target.value)} placeholder="CGPA" className="rounded-[9px] border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none" />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-muted">Branch</label>
+            <BranchSelect value={form.branch} onChange={(v) => update('branch', v)} />
+          </div>
         </div>
       )}
 
@@ -178,7 +273,11 @@ function AddSkillForm({ onAdd }) {
     setOpen(false)
   }
 
-  if (!open) return <button onClick={() => setOpen(true)} className="text-[13px] font-medium text-primary hover:underline">+ Add Skill</button>
+  if (!open) return (
+    <button onClick={() => setOpen(true)} className="rounded-[8px] border border-borderStrong bg-surface px-3 py-1.5 text-[12.5px] font-semibold text-primary hover:bg-surface2">
+      + Add Skill
+    </button>
+  )
 
   return (
     <form onSubmit={submit} className="flex items-center gap-2">
@@ -187,56 +286,281 @@ function AddSkillForm({ onAdd }) {
         {EXPERIENCE_LEVELS.map((lvl) => <option key={lvl} value={lvl}>{lvl}</option>)}
       </select>
       <button type="submit" className="rounded-[9px] bg-primary px-3 py-1.5 text-xs font-semibold text-white">Add</button>
+      <button type="button" onClick={() => setOpen(false)} className="rounded-[9px] border border-border bg-surface px-3 py-1.5 text-xs text-muted">Cancel</button>
     </form>
   )
 }
 
-function ViewProfile({ student, isOwn, onEdit, onUpdate }) {
+function SkillPill({ skill, isOwn, editMode, onChangeLevel, onRemove }) {
+  const [editingLevel, setEditingLevel] = useState(false)
+
+  return (
+    <div className="group flex items-center gap-1.5 rounded-full border border-border bg-bg py-1 pl-3 pr-1.5">
+      <span className="text-[12.5px] font-medium text-text">{skill.name}</span>
+      {editingLevel ? (
+        <select
+          autoFocus
+          value={skill.level}
+          onChange={(e) => { onChangeLevel(e.target.value); setEditingLevel(false) }}
+          onBlur={() => setEditingLevel(false)}
+          className="rounded-full border border-primary bg-surface px-1.5 py-0.5 text-[10.5px]"
+        >
+          {EXPERIENCE_LEVELS.map((lvl) => <option key={lvl} value={lvl}>{lvl}</option>)}
+        </select>
+      ) : (
+        <span
+          onClick={() => isOwn && setEditingLevel(true)}
+          className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${SKILL_LEVEL_STYLE[skill.level] || SKILL_LEVEL_STYLE.Intermediate} ${isOwn ? 'cursor-pointer' : ''}`}
+          title={isOwn ? 'Click to change level' : undefined}
+        >
+          {skill.level}
+        </span>
+      )}
+      {isOwn && (
+        <button
+          onClick={onRemove}
+          className={`ml-0.5 h-4 w-4 items-center justify-center rounded-full text-[11px] text-muted hover:bg-danger/10 hover:text-danger group-hover:flex ${
+            editMode ? 'flex' : 'hidden'
+          }`}
+          title="Remove skill"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  )
+}
+
+const INTEREST_SUGGESTIONS = [
+  'AI / Machine Learning', 'Web Development', 'Mobile Development',
+  'Sustainability', 'Healthcare', 'FinTech', 'Education',
+  'Cybersecurity', 'IoT', 'Data Science', 'AR / VR', 'Robotics',
+]
+
+function AddInterestForm({ onAdd, label = '+ Add Interest' }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+
+  function submit(e) {
+    e.preventDefault()
+    if (!name.trim()) return
+    onAdd(name.trim())
+    setName('')
+    setOpen(false)
+  }
+
+  if (!open) return (
+    <button onClick={() => setOpen(true)} className="rounded-[8px] border border-borderStrong bg-surface px-3 py-1.5 text-[12.5px] font-semibold text-primary hover:bg-surface2">
+      {label}
+    </button>
+  )
+
+  return (
+    <form onSubmit={submit} className="flex items-center gap-2">
+      <input
+        autoFocus
+        list="interest-suggestions"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Interest"
+        className="rounded-[9px] border border-border bg-bg px-2.5 py-1.5 text-xs text-text focus:border-primary focus:outline-none"
+      />
+      <datalist id="interest-suggestions">
+        {INTEREST_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
+      </datalist>
+      <button type="submit" className="rounded-[9px] bg-primary px-3 py-1.5 text-xs font-semibold text-white">Add</button>
+      <button type="button" onClick={() => setOpen(false)} className="rounded-[9px] border border-border bg-surface px-3 py-1.5 text-xs text-muted">Cancel</button>
+    </form>
+  )
+}
+
+function ViewProfile({ student, isOwn, onUpdate }) {
+  const navigate = useNavigate()
+  const { connectedIds } = useConnections()
+  const [editMode, setEditMode] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [toast, setToast] = useState('')
   const initial = student.name?.charAt(0)?.toUpperCase() || '?'
   const idTag = `CLV-${(student.id || '').replace(/-/g, '').slice(0, 6).toUpperCase()}`
+  const branchValue = student.branch || student.department || ''
   const skillsDetailed = student.skills_detailed?.length
     ? student.skills_detailed
     : (student.skills || []).map((name) => ({ name, level: 'Intermediate' }))
+  const interests = student.project_interests || []
 
-  async function addSkill(name, level) {
-    const nextDetailed = [...skillsDetailed, { name, level }]
-    const nextSkills = [...(student.skills || []), name]
-    await supabase.from('student_profiles').update({ skills_detailed: nextDetailed, skills: nextSkills }).eq('id', student.id)
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(''), 2000)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  const saveField = (field) => async (value) => {
+    let stored = value
+    if (field === 'year' || field === 'cgpa') {
+      stored = value === '' || value === null || value === undefined ? null : Number(value)
+    }
+    const patch = { [field]: stored }
+    if (field === 'branch') patch.department = stored
+    const { error } = await supabase.from('student_profiles').update(patch).eq('id', student.id)
+    if (!error) {
+      onUpdate?.()
+      setToast('Saved')
+    }
+  }
+
+  async function saveSkills(list) {
+    await supabase.from('student_profiles').update({
+      skills_detailed: list,
+      skills: list.map((s) => s.name),
+    }).eq('id', student.id)
     onUpdate?.()
+    setToast('Saved')
+  }
+
+  function addSkill(name, level) {
+    saveSkills([...skillsDetailed, { name, level }])
+  }
+
+  function changeSkillLevel(name, level) {
+    saveSkills(skillsDetailed.map((s) => (s.name === name ? { ...s, level } : s)))
+  }
+
+  function removeSkill(name) {
+    saveSkills(skillsDetailed.filter((s) => s.name !== name))
+  }
+
+  async function saveInterests(list) {
+    await supabase.from('student_profiles').update({ project_interests: list }).eq('id', student.id)
+    onUpdate?.()
+    setToast('Saved')
+  }
+
+  function addInterest(name) {
+    saveInterests([...interests, name])
+  }
+
+  function removeInterest(name) {
+    saveInterests(interests.filter((i) => i !== name))
   }
 
   async function toggleCollaborate() {
     await supabase.from('student_profiles').update({ open_to_collaborate: !student.open_to_collaborate }).eq('id', student.id)
     onUpdate?.()
+    setToast('Saved')
+  }
+
+  async function handlePhotoUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Please choose an image under 2MB.')
+      return
+    }
+
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `${student.id}/avatar.${ext}`
+
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (upErr) {
+      alert('Upload failed: ' + upErr.message)
+      setUploading(false)
+      return
+    }
+
+    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
+    const photoUrl = `${pub.publicUrl}?t=${Date.now()}`
+
+    await supabase.from('student_profiles').update({ photo_url: photoUrl }).eq('id', student.id)
+    onUpdate?.()
+    setToast('Photo updated')
+    setUploading(false)
   }
 
   return (
     <div className="mx-auto max-w-2xl">
+      {isOwn && editMode && (
+        <div className="mb-4 flex items-center gap-2 rounded-[10px] border border-borderStrong bg-surface2 px-4 py-2.5 text-[13px] text-primary">
+          <span>✏️</span>
+          <span>Edit mode is on — click any field with a dashed outline to change it. Changes save automatically.</span>
+        </div>
+      )}
+
       <div className="rounded-[14px] border border-border bg-surface p-6">
         <div className="flex items-start gap-5">
-          <div className="relative shrink-0">
+          <div className="relative h-[88px] w-[88px] shrink-0">
             {student.photo_url ? (
               <img src={student.photo_url} alt={student.name} className="h-[88px] w-[88px] rounded-full object-cover" />
             ) : (
               <div className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-surface2 text-3xl font-bold text-primary">{initial}</div>
             )}
+            {isOwn && (
+              <>
+                {uploading && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </div>
+                )}
+                <label
+                  htmlFor="avatar-upload"
+                  title="Change photo"
+                  className="absolute bottom-0 right-0 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-2 border-surface bg-primary text-[13px] shadow-sm hover:bg-primaryHover"
+                >
+                  📷
+                </label>
+                <input id="avatar-upload" type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+              </>
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="m-0 text-[21px] font-bold text-text">{student.name}</h1>
+              <h1 className="m-0 text-[21px] font-bold text-text">
+                {isOwn ? <EditableField value={student.name} onSave={saveField('name')} editMode={editMode} /> : student.name}
+              </h1>
               <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-semibold text-accent">Student</span>
               <span className="text-[11px] text-muted">ID: {idTag}</span>
+              {!isOwn && (
+                <div className="ml-auto w-40">
+                  <ConnectButton studentId={student.id} />
+                </div>
+              )}
               {isOwn && (
-                <button onClick={onEdit} className="ml-auto rounded-[9px] border border-borderStrong bg-surface px-4 py-1.5 text-xs font-medium text-primary hover:bg-surface2">
-                  Edit Profile
+                <button
+                  onClick={() => setEditMode(!editMode)}
+                  className={`ml-auto flex items-center gap-1.5 rounded-[9px] border px-4 py-2 text-[13px] font-semibold transition-colors ${
+                    editMode
+                      ? 'border-primary bg-primary text-white hover:bg-primaryHover'
+                      : 'border-borderStrong bg-surface text-primary hover:bg-surface2'
+                  }`}
+                >
+                  {editMode ? '✓ Done Editing' : '✏️ Edit Profile'}
                 </button>
               )}
             </div>
-            <p className="mt-1.5 text-[13px] text-textSecondary">
-              {[student.department, student.college, student.year ? `Year ${student.year}` : null].filter(Boolean).join(' · ')}
+            <p className="mt-1.5 flex flex-wrap items-center gap-1 text-[13px] text-textSecondary">
+              {isOwn ? (
+                <>
+                  <BranchEditableField value={branchValue} onSave={saveField('branch')} editMode={editMode} />
+                  <span>·</span>
+                  <EditableField value={student.college} onSave={saveField('college')} placeholder="Add college" editMode={editMode} />
+                  <span>·</span>
+                  Year <EditableField value={student.year} onSave={saveField('year')} type="number" placeholder="?" editMode={editMode} />
+                </>
+              ) : (
+                [branchValue, student.college, student.year ? `Year ${student.year}` : null].filter(Boolean).join(' · ')
+              )}
             </p>
-            {student.location && <p className="mt-1 text-[12.5px] text-muted">📍 {student.location}</p>}
-            {student.tagline && <p className="mt-1.5 text-[13px] italic text-primaryHover">"{student.tagline}"</p>}
+            {isOwn ? (
+              <p className="mt-1 text-[12.5px] text-muted">📍 <EditableField value={student.location} onSave={saveField('location')} placeholder="Add your city" editMode={editMode} /></p>
+            ) : student.location ? (
+              <p className="mt-1 text-[12.5px] text-muted">📍 {student.location}</p>
+            ) : null}
+            {isOwn ? (
+              <p className="mt-1.5 text-[13px] italic text-primaryHover">"<EditableField value={student.tagline} onSave={saveField('tagline')} placeholder="Add a tagline" editMode={editMode} />"</p>
+            ) : student.tagline ? (
+              <p className="mt-1.5 text-[13px] italic text-primaryHover">"{student.tagline}"</p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -244,16 +568,28 @@ function ViewProfile({ student, isOwn, onEdit, onUpdate }) {
       <div className="mt-4 flex divide-x divide-border rounded-[14px] border border-border bg-surface">
         <div className="flex-1 px-5 py-4">
           <p className="m-0 text-[11.5px] text-muted">🎓 CGPA</p>
-          <p className="m-0 text-[15px] font-semibold text-text">{student.cgpa ? `${student.cgpa} / 10` : '—'}</p>
+          <p className="m-0 text-[15px] font-semibold text-text">
+            {isOwn ? <EditableField value={student.cgpa} onSave={saveField('cgpa')} type="number" placeholder="Add CGPA" editMode={editMode} /> : (student.cgpa ? `${student.cgpa} / 10` : '—')}
+          </p>
         </div>
         <div className="flex-1 px-5 py-4">
           <p className="m-0 text-[11.5px] text-muted">💼 Experience</p>
-          <p className="m-0 text-[15px] font-semibold text-text">{student.experience || '—'}</p>
+          <p className="m-0 text-[15px] font-semibold text-text">
+            {isOwn ? <EditableField value={student.experience} onSave={saveField('experience')} options={EXPERIENCE_LEVELS} editMode={editMode} /> : (student.experience || '—')}
+          </p>
         </div>
         <div className="flex-1 px-5 py-4">
           <p className="m-0 text-[11.5px] text-muted">⏱ Availability</p>
-          <p className="m-0 text-[15px] font-semibold text-text">{student.availability_hours || '—'}</p>
+          <p className="m-0 text-[15px] font-semibold text-text">
+            {isOwn ? <EditableField value={student.availability_hours} onSave={saveField('availability_hours')} placeholder="e.g. 10-15 hrs/week" editMode={editMode} /> : (student.availability_hours || '—')}
+          </p>
         </div>
+        {isOwn && (
+          <button onClick={() => navigate('/network')} className="flex-1 px-5 py-4 text-left transition-colors hover:bg-surface2">
+            <p className="m-0 text-[11.5px] text-muted">🔗 Connections</p>
+            <p className="m-0 text-[15px] font-semibold text-text">{connectedIds.length}</p>
+          </button>
+        )}
       </div>
 
       <div className="mt-4 rounded-[14px] border border-border bg-surface p-5">
@@ -263,22 +599,49 @@ function ViewProfile({ student, isOwn, onEdit, onUpdate }) {
         </div>
         <div className="flex flex-wrap gap-2">
           {skillsDetailed.map((skill) => (
-            <div key={skill.name} className="flex items-center gap-1.5 rounded-full border border-border bg-bg py-1 pl-3 pr-1.5">
-              <span className="text-[12.5px] font-medium text-text">{skill.name}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${SKILL_LEVEL_STYLE[skill.level] || SKILL_LEVEL_STYLE.Intermediate}`}>{skill.level}</span>
-            </div>
+            <SkillPill
+              key={skill.name}
+              skill={skill}
+              isOwn={isOwn}
+              editMode={editMode}
+              onChangeLevel={(level) => changeSkillLevel(skill.name, level)}
+              onRemove={() => removeSkill(skill.name)}
+            />
           ))}
           {skillsDetailed.length === 0 && <p className="text-sm text-muted">No skills added yet.</p>}
         </div>
       </div>
 
-      {student.project_interests?.length > 0 && (
+      {(interests.length > 0 || isOwn) && (
         <div className="mt-4 rounded-[14px] border border-border bg-surface p-5">
-          <h3 className="mb-3 text-sm font-semibold text-text">📍 Project Interests</h3>
-          <div className="flex flex-wrap gap-2">
-            {student.project_interests.map((interest) => (
-              <span key={interest} className="rounded-full bg-surface2 px-3 py-1 text-xs font-medium text-primary">{interest}</span>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="m-0 text-sm font-semibold text-text">📍 Project Interests</h3>
+            {isOwn && interests.length > 0 && <AddInterestForm onAdd={addInterest} />}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {interests.map((interest) => (
+              <span key={interest} className="group flex items-center gap-1.5 rounded-full bg-surface2 px-3 py-1 text-xs font-medium text-primary">
+                {interest}
+                {isOwn && (
+                  <button
+                    onClick={() => removeInterest(interest)}
+                    className={`text-primary/60 hover:text-danger group-hover:inline ${editMode ? 'inline' : 'hidden'}`}
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
             ))}
+            {interests.length === 0 && (
+              isOwn ? (
+                <>
+                  <p className="m-0 text-sm text-muted">No interests added yet.</p>
+                  <AddInterestForm onAdd={addInterest} label="+ Add your first interest" />
+                </>
+              ) : (
+                <p className="text-sm text-muted">No interests added yet.</p>
+              )
+            )}
           </div>
         </div>
       )}
@@ -287,9 +650,18 @@ function ViewProfile({ student, isOwn, onEdit, onUpdate }) {
         <div className="rounded-[14px] border border-border bg-surface p-5">
           <h3 className="mb-3 text-sm font-semibold text-text">🔗 Links</h3>
           <div className="flex flex-col gap-2">
-            {student.github_url && <a href={student.github_url} target="_blank" rel="noreferrer" className="text-[13px] text-primary hover:underline">GitHub: {student.github_url.replace(/^https?:\/\//, '')}</a>}
-            {student.linkedin_url && <a href={student.linkedin_url} target="_blank" rel="noreferrer" className="text-[13px] text-primary hover:underline">LinkedIn: {student.linkedin_url.replace(/^https?:\/\//, '')}</a>}
-            {!student.github_url && !student.linkedin_url && <p className="text-sm text-muted">No links added.</p>}
+            {isOwn ? (
+              <>
+                <p className="m-0 text-[13px] text-primary">GitHub: <EditableField value={student.github_url} onSave={saveField('github_url')} placeholder="Add GitHub" editMode={editMode} /></p>
+                <p className="m-0 text-[13px] text-primary">LinkedIn: <EditableField value={student.linkedin_url} onSave={saveField('linkedin_url')} placeholder="Add LinkedIn" editMode={editMode} /></p>
+              </>
+            ) : (
+              <>
+                {student.github_url && <a href={student.github_url} target="_blank" rel="noreferrer" className="text-[13px] text-primary hover:underline">GitHub: {student.github_url.replace(/^https?:\/\//, '')}</a>}
+                {student.linkedin_url && <a href={student.linkedin_url} target="_blank" rel="noreferrer" className="text-[13px] text-primary hover:underline">LinkedIn: {student.linkedin_url.replace(/^https?:\/\//, '')}</a>}
+                {!student.github_url && !student.linkedin_url && <p className="text-sm text-muted">No links added.</p>}
+              </>
+            )}
           </div>
         </div>
         <div className="rounded-[14px] border border-border bg-surface p-5">
@@ -319,6 +691,12 @@ function ViewProfile({ student, isOwn, onEdit, onUpdate }) {
           </div>
         </div>
       )}
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[1000] rounded-[9px] bg-primary px-[18px] py-2.5 text-[13px] font-medium text-white shadow-lg">
+          ✓ {toast}
+        </div>
+      )}
     </div>
   )
 }
@@ -329,7 +707,6 @@ export default function Profile() {
   const { profile: ownProfile, loading: ownLoading, refresh } = useProfile()
   const navigate = useNavigate()
   const [otherProfile, setOtherProfile] = useState(null)
-  const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(!!id)
 
   const isOwn = !id || id === user?.id
@@ -355,7 +732,7 @@ export default function Profile() {
     )
   }
 
-  const showSetup = isOwn && (!ownProfile || editing)
+  const showSetup = isOwn && !ownProfile
   const profileToShow = isOwn ? ownProfile : otherProfile
 
   return (
@@ -366,7 +743,6 @@ export default function Profile() {
             userId={user.id}
             onComplete={async () => {
               await refresh()
-              setEditing(false)
               navigate('/discover')
             }}
           />
@@ -374,7 +750,6 @@ export default function Profile() {
           <ViewProfile
             student={profileToShow}
             isOwn={isOwn}
-            onEdit={() => setEditing(true)}
             onUpdate={isOwn ? refresh : loadOther}
           />
         ) : (

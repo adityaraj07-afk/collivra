@@ -8,6 +8,7 @@ import Logo from './Logo'
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Home', icon: '🏠' },
   { path: '/find-people', label: 'Find People', icon: '👥' },
+  { path: '/network', label: 'My Network', icon: '🔗', badgeKey: 'network' },
   { path: '/discover', label: 'Find Projects', icon: '🔍' },
   { path: '/create-project', label: 'Create Project', icon: '➕' },
   { path: '/my-teams', label: 'My Teams', icon: '🤝' },
@@ -16,10 +17,12 @@ const NAV_ITEMS = [
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
+const MOBILE_PATHS = ['/dashboard', '/find-people', '/network', '/messages', '/notifications']
+
 export default function Sidebar() {
   const { user } = useAuth()
   const { profile } = useProfile()
-  const [badges, setBadges] = useState({ messages: 0, notifications: 0 })
+  const [badges, setBadges] = useState({ messages: 0, notifications: 0, network: 0 })
 
   useEffect(() => {
     if (!user) return
@@ -27,9 +30,10 @@ export default function Sidebar() {
   }, [user])
 
   async function loadBadges() {
-    const [{ count: invites }, { count: connections }] = await Promise.all([
+    const [{ count: invites }, { count: pendingConnections }, { count: unreadDirect }] = await Promise.all([
       supabase.from('team_invites').select('*', { count: 'exact', head: true }).eq('receiver_id', user.id).eq('status', 'pending'),
       supabase.from('connections').select('*', { count: 'exact', head: true }).eq('receiver_id', user.id).eq('status', 'pending'),
+      supabase.from('direct_messages').select('*', { count: 'exact', head: true }).eq('receiver_id', user.id).is('read_at', null),
     ])
 
     const { data: memberRows } = await supabase.from('team_members').select('team_id').eq('student_id', user.id)
@@ -53,7 +57,11 @@ export default function Sidebar() {
       unreadMessages = counts.reduce((a, b) => a + b, 0)
     }
 
-    setBadges({ messages: unreadMessages, notifications: (invites || 0) + (connections || 0) })
+    setBadges({
+      messages: unreadMessages + (unreadDirect || 0),
+      notifications: (invites || 0) + (pendingConnections || 0),
+      network: pendingConnections || 0,
+    })
   }
 
   return (
@@ -98,18 +106,24 @@ export default function Sidebar() {
 }
 
 export function MobileNav() {
-  const [badges, setBadges] = useState({ messages: 0, notifications: 0 })
+  const [badges, setBadges] = useState({ messages: 0, notifications: 0, network: 0 })
   const { user } = useAuth()
 
   useEffect(() => {
     if (!user) return
-    supabase.from('team_invites').select('*', { count: 'exact', head: true }).eq('receiver_id', user.id).eq('status', 'pending')
-      .then(({ count }) => setBadges((b) => ({ ...b, notifications: count || 0 })))
+    Promise.all([
+      supabase.from('team_invites').select('*', { count: 'exact', head: true }).eq('receiver_id', user.id).eq('status', 'pending'),
+      supabase.from('connections').select('*', { count: 'exact', head: true }).eq('receiver_id', user.id).eq('status', 'pending'),
+    ]).then(([{ count: invites }, { count: pendingConnections }]) => {
+      setBadges((b) => ({ ...b, notifications: (invites || 0) + (pendingConnections || 0), network: pendingConnections || 0 }))
+    })
   }, [user])
+
+  const mobileItems = MOBILE_PATHS.map((path) => NAV_ITEMS.find((item) => item.path === path)).filter(Boolean)
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-sidebarBg md:hidden">
-      {NAV_ITEMS.slice(0, 5).map((item) => (
+      {mobileItems.map((item) => (
         <NavLink
           key={item.path}
           to={item.path}

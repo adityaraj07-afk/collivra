@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
+import { useConnections } from '../hooks/useConnections'
 import AppShell from '../components/AppShell'
 
 function timeAgo(dateStr) {
@@ -15,6 +16,7 @@ function timeAgo(dateStr) {
 
 export default function Notifications() {
   const { user } = useAuth()
+  const { respond: respondConnectionHook, reload: reloadConnections } = useConnections()
   const [invites, setInvites] = useState([])
   const [connections, setConnections] = useState([])
   const [loading, setLoading] = useState(true)
@@ -49,7 +51,8 @@ export default function Notifications() {
   }
 
   async function respondConnection(id, status) {
-    await supabase.from('connections').update({ status }).eq('id', id)
+    await respondConnectionHook(id, status === 'accepted')
+    await reloadConnections()
     load()
   }
 

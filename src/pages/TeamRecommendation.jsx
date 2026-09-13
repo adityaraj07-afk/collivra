@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { suggestTeam } from '../lib/gemini'
 import AppShell from '../components/AppShell'
+import ConnectButton from '../components/ConnectButton'
 
 export default function TeamRecommendation() {
   const { projectId } = useParams()
@@ -122,6 +123,11 @@ export default function TeamRecommendation() {
                       <td className="px-4 py-3.5 text-sm text-accentLight">{member.role}</td>
                       <td className="px-4 py-3.5">
                         <span className="text-sm font-bold text-accent">{member.skillMatch}%</span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="w-[130px]">
+                          <ConnectButton studentId={member.id} />
+                        </div>
                       </td>
                     </tr>
                   ))}

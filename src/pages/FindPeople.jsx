@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import AppShell from '../components/AppShell'
+import ConnectButton from '../components/ConnectButton'
 
 const EXPERIENCE_LEVELS = ['Beginner', 'Intermediate', 'Advanced']
 
@@ -32,11 +33,6 @@ export default function FindPeople() {
       .sort((a, b) => b.matchScore - a.matchScore)
     setStudents(scored)
     setLoading(false)
-  }
-
-  async function handleConnect(studentId) {
-    const { error } = await supabase.from('connections').insert({ sender_id: user.id, receiver_id: studentId })
-    if (!error) alert('Connection request sent!')
   }
 
   const filtered = students.filter((s) => {
@@ -108,12 +104,9 @@ export default function FindPeople() {
                 <span className="hidden shrink-0 rounded-full bg-accent/10 px-2.5 py-1 text-[11.5px] font-semibold text-accent sm:inline-block">
                   ✓ {student.matchScore}% Match
                 </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleConnect(student.id) }}
-                  className="shrink-0 rounded-[9px] bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-primaryHover"
-                >
-                  Connect
-                </button>
+                <div onClick={(e) => e.stopPropagation()} className="w-[150px] shrink-0">
+                  <ConnectButton studentId={student.id} />
+                </div>
               </div>
             ))}
           </div>

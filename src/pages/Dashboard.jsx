@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
+import { useConnections } from '../hooks/useConnections'
 import AppShell from '../components/AppShell'
+import ConnectButton from '../components/ConnectButton'
 
 const QUICK_ACTIONS = [
   { icon: '📋', title: 'Create Project', sub: 'Turn your idea into reality', to: '/create-project' },
@@ -14,6 +16,7 @@ const QUICK_ACTIONS = [
 export default function Dashboard() {
   const { user } = useAuth()
   const { profile } = useProfile()
+  const { connectedIds } = useConnections()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('people')
   const [stats, setStats] = useState({ projects: 0, teamRequests: 0, pendingInvites: 0 })
@@ -57,6 +60,7 @@ export default function Dashboard() {
     { icon: '📊', bg: 'bg-info/10', count: stats.projects, label: 'Active Projects' },
     { icon: '👤', bg: 'bg-warning/10', count: stats.teamRequests, label: 'Team Requests' },
     { icon: '📩', bg: 'bg-danger/10', count: stats.pendingInvites, label: 'Pending Invitation' },
+    { icon: '🔗', bg: 'bg-primary/10', count: connectedIds.length, label: 'Connections' },
   ]
 
   const hour = new Date().getHours()
@@ -155,12 +159,7 @@ export default function Dashboard() {
                     <span key={sk} className="rounded-md bg-surface2 px-2.5 py-1 text-[11.5px] font-medium text-primary">{sk}</span>
                   ))}
                 </div>
-                <button
-                  onClick={() => navigate(`/profile/${student.id}`)}
-                  className="w-full rounded-[9px] bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primaryHover"
-                >
-                  Connect
-                </button>
+                <ConnectButton studentId={student.id} />
               </div>
             ))}
           </div>
